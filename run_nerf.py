@@ -1,6 +1,7 @@
 import utils
 import torch
 import numpy as np
+import os
 
 def train(args):
     pass 
@@ -11,11 +12,16 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     # set up logger
-    logger = utils.setup_logger(args.logpath)
+    os.makedirs(os.path.join(args.basedir, args.expname), exist_ok=True)
+    f = os.path.join(args.basedir, args.expname, "audit.log")
+    logger = utils.setup_logger(f)
 
     # load data
     images, poses, render_poses, hwf, i_split, near, far = utils.load_data(args, logger)
     i_train, i_val, i_test = i_split
+
+    if args.render_test:
+        render_poses = np.array(poses[i_test])
 
     # cast intrinsics to right types (int)
     H, W, focal = hwf
