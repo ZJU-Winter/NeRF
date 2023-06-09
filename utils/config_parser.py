@@ -4,6 +4,8 @@ def config_parser() -> configargparse.ArgumentParser :
     parser = configargparse.ArgParser(default_config_files=['./config/default.yml'])
     parser.add_argument('--config', is_config_file=True, 
                         help='config file path')
+    parser.add_argument("--expname", type=str, 
+                        help='experiment name')
     parser.add_argument("--basedir", type=str, default='./checkpoints/', 
                         help='where to store ckpts logs')
     parser.add_argument("--logpath", type=str, default='./logs/audit.log', 
@@ -20,6 +22,8 @@ def config_parser() -> configargparse.ArgumentParser :
                         help='layers in fine network')
     parser.add_argument("--netwidth_fine", type=int, default=256, 
                         help='channels per layer in fine network')
+    parser.add_argument("--N_iter", type=int, default=200000, 
+                        help='number of iteration')
     parser.add_argument("--N_rand", type=int, default=32*32*4, 
                         help='batch size (number of random rays per gradient step)')
     parser.add_argument("--lrate", type=float, default=5e-4, 
