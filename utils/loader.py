@@ -9,7 +9,7 @@ def load_data(args, logger):
     @return images: ndarray
     @return poses: ndarray
     @return render_poses: tensor
-    @return hwf: (height, width, focal) tuple
+    @return hwf: [height, width, focal] ndarray
     @return i_split: (i_train, i_val, i_test) tuple
     @return near: float
     @return far: float
