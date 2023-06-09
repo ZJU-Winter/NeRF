@@ -4,12 +4,18 @@ import numpy as np
 import imageio
 import json
 import torch.nn.functional as F
+import cv2
 
-trans_t = lambda t: torch.Tensor(
-    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, t], [0, 0, 0, 1]], dtype=torch.float32
+# translation matrix (translate along z-axis)
+trans_t = lambda t: torch.tensor(
+    [[1, 0, 0, 0], 
+     [0, 1, 0, 0], 
+     [0, 0, 1, t], 
+     [0, 0, 0, 1]], dtype=torch.float32,
 )
 
-rot_phi = lambda phi: torch.Tensor(
+# rotation matrix (phi, rotate x-axis)
+rot_phi = lambda phi: torch.tensor(
     [
         [1, 0, 0, 0],
         [0, np.cos(phi), -np.sin(phi), 0],
@@ -19,7 +25,8 @@ rot_phi = lambda phi: torch.Tensor(
     dtype=torch.float32,
 )
 
-rot_theta = lambda th: torch.Tensor(
+# rotation matrix (theta, rotate y-axis)
+rot_theta = lambda th: torch.tensor(
     [
         [np.cos(th), 0, -np.sin(th), 0],
         [0, 1, 0, 0],
@@ -29,17 +36,23 @@ rot_theta = lambda th: torch.Tensor(
     dtype=torch.float32,
 )
 
-
 def pose_spherical(theta, phi, radius):
+    """
+    define camera to world transformation matrix according to camera pose
+    """
     c2w = trans_t(radius)
     c2w = rot_phi(phi / 180.0 * np.pi) @ c2w
     c2w = rot_theta(theta / 180.0 * np.pi) @ c2w
+    #? exchange y & z axis, flip x axis?
     c2w = (
-        torch.Tensor(
-            np.array([[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-        )
-        @ c2w
-    )
+        torch.tensor(
+            [         
+                [-1, 0, 0, 0], 
+                [0, 0, 1, 0], 
+                [0, 1, 0, 0], 
+                [0, 0, 0, 1]
+            ], dtype=torch.float32)
+        ) @ c2w
     return c2w
 
 
@@ -90,18 +103,18 @@ def load_blender_data(basedir, half_res=False, testskip=1):
     )
 
     if half_res:
-        imgs = torch.tensor(imgs)
-        imgs = (
-            F.interpolate(imgs.permute(0, 3, 1, 2), size=[400, 400], mode="area")
-            .permute(0, 2, 3, 1)
-            .numpy()
-        )
         H = H // 2
         W = W // 2
         focal = focal / 2.0
-        # imgs_half_res = np.zeros((imgs.shape[0], H, W, 4))
-        # for i, img in enumerate(imgs):
-        #     imgs_half_res[i] = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
-        # imgs = imgs_half_res
+        imgs_half_res = np.zeros((imgs.shape[0], H, W, 4))
+        for i, img in enumerate(imgs):
+            imgs_half_res[i] = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
+        imgs = imgs_half_res
+        # imgs = torch.tensor(imgs)
+        # imgs = (
+        #     F.interpolate(imgs.permute(0, 3, 1, 2), size=[H, W], mode="area")
+        #     .permute(0, 2, 3, 1)
+        #     .numpy()
+        # )
 
     return imgs, poses, render_poses, [H, W, focal], i_split
