@@ -6,9 +6,9 @@ def load_data(args, logger):
     """
     @params args: config args
     @params logger: logger
-    @return images: ndarray
-    @return poses: ndarray
-    @return render_poses: tensor
+    @return images: [n_imgs, W, H, 3], ndarray
+    @return poses: [n_imgs, 4, 4] (blender) or [n_imgs, 3, 4] (llff) camera poses from dataset, ndarray
+    @return render_poses: [n_camera, 4, 4] (blender) or [n_imgs, 3, 5] (llff) render poses, tensor
     @return hwf: [height, width, focal] ndarray
     @return i_split: (i_train, i_val, i_test) tuple
     @return near: float
