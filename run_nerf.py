@@ -118,9 +118,9 @@ def train(args):
     poses = torch.Tensor(poses).to(utils.device)
 
     logger.info('Begin')
-    logger.info('TRAIN views are'.format(i_train))
-    logger.info('TEST views are'.format(i_test))
-    logger.info('VAL views are'.format(i_val))
+    logger.info('TRAIN views are {}'.format(i_train))
+    logger.info('TEST views are {}'.format(i_test))
+    logger.info('VAL views are {}'.format(i_val))
     N_iters = args.N_iter
 
     start = start + 1
@@ -183,7 +183,7 @@ def train(args):
                 'network_fine_state_dict': render_kwargs_train['network_fine'].state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, path)
-            logger.info('Saved checkpoints at'.format(path))
+            logger.info('Saved checkpoints at {}'.format(path))
 
         if i % args.i_video == 0 and i > 0:
             # Turn on testing mode
@@ -209,7 +209,7 @@ def train(args):
             testsavedir = os.path.join(
                 basedir, expname, 'testset_{:06d}'.format(i))
             os.makedirs(testsavedir, exist_ok=True)
-            logger.info('test poses shape'.format(poses[i_test].shape))
+            logger.info('test poses shape {}'.format(poses[i_test].shape))
             with torch.no_grad():
                 utils.render_path(torch.Tensor(poses[i_test]).to(
                     utils.device), hwf, args.chunk, render_kwargs_test, gt_imgs=images[i_test], savedir=testsavedir)
