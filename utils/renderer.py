@@ -89,7 +89,7 @@ def render_path(
     t = time.time()
     psnr = 0
     for i, c2w in enumerate(render_poses):
-        logger.info(i, time.time() - t)
+        logger.info(f"{i} {time.time() - t}")
         t = time.time()
         rgb, disp, acc, _ = render(
             H, W, focal, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
@@ -97,7 +97,7 @@ def render_path(
         rgbs.append(rgb.cpu().numpy())
         disps.append(disp.cpu().numpy())
         if i == 0:
-            logger.info(rgb.shape, disp.shape)
+            logger.info(f"{rgb.shape} {disp.shape}")
 
         # print test psnr
         if gt_imgs is not None and render_factor==0:

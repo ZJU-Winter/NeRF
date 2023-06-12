@@ -70,11 +70,11 @@ def train(args):
             testsavedir = os.path.join(basedir, expname, 'renderonly_{}_{:06d}'.format(
                 'test' if args.render_test else 'path', start))
             os.makedirs(testsavedir, exist_ok=True)
-            logger.info('test poses shape', render_poses.shape)
+            logger.info(f'test poses shape {render_poses.shape}')
 
             rgbs, _ = utils.render_path(render_poses, hwf, args.chunk, render_kwargs_test,
                                         savedir=testsavedir, render_factor=args.render_factor)
-            logger.info('Done rendering', testsavedir)
+            logger.info('Done rendering'.format(testsavedir))
             imageio.mimwrite(os.path.join(testsavedir, 'video.mp4'),
                              utils.to8b(rgbs), fps=30, quality=8)
 
@@ -118,9 +118,9 @@ def train(args):
     poses = torch.Tensor(poses).to(utils.device)
 
     logger.info('Begin')
-    logger.info('TRAIN views are', i_train)
-    logger.info('TEST views are', i_test)
-    logger.info('VAL views are', i_val)
+    logger.info('TRAIN views are'.format(i_train))
+    logger.info('TEST views are'.format(i_test))
+    logger.info('VAL views are'.format(i_val))
     N_iters = args.N_iter
 
     start = start + 1
@@ -183,14 +183,14 @@ def train(args):
                 'network_fine_state_dict': render_kwargs_train['network_fine'].state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, path)
-            logger.info('Saved checkpoints at', path)
+            logger.info('Saved checkpoints at'.format(path))
 
         if i % args.i_video == 0 and i > 0:
             # Turn on testing mode
             with torch.no_grad():
                 rgbs, disps = utils.render_path(
                     render_poses, hwf, args.chunk, render_kwargs_test)
-            logger.info('Done, saving', rgbs.shape, disps.shape)
+            logger.info(f'Done, saving {rgbs.shape} {disps.shape}')
             moviebase = os.path.join(
                 basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4',
@@ -209,7 +209,7 @@ def train(args):
             testsavedir = os.path.join(
                 basedir, expname, 'testset_{:06d}'.format(i))
             os.makedirs(testsavedir, exist_ok=True)
-            logger.info('test poses shape', poses[i_test].shape)
+            logger.info('test poses shape'.format(poses[i_test].shape))
             with torch.no_grad():
                 utils.render_path(torch.Tensor(poses[i_test]).to(
                     utils.device), hwf, args.chunk, render_kwargs_test, gt_imgs=images[i_test], savedir=testsavedir)
@@ -303,10 +303,10 @@ def create_nerf(args):
         ckpts = [os.path.join(basedir, expname, f) for f in sorted(
             os.listdir(os.path.join(basedir, expname))) if 'tar' in f]
 
-    logger.info('Found ckpts', ckpts)
+    logger.info('Found ckpts {}'.format(ckpts))
     if len(ckpts) > 0 and not args.no_reload:
         ckpt_path = ckpts[-1]
-        logger.info('Reloading from', ckpt_path)
+        logger.info('Reloading from {}'.format(ckpt_path))
         ckpt = torch.load(ckpt_path)
 
         start = ckpt['global_step']
