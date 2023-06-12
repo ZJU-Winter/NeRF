@@ -1,10 +1,10 @@
 ### INPUT
-datadir: ./data/basket
+# datadir: ./data/basket
+datadir: ../nerf-pytorch/data/basket
 dataset_type: llff
-factor: 2
 expname: basket
 
-factor: 2
+factor: 1
 llffhold: 8
 
 ### TRAINING
@@ -17,3 +17,5 @@ use_viewdirs: True
 raw_noise_std: 1e0
 
 i_video: 30000
+i_img: 2000
+spherify: true
