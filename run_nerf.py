@@ -7,22 +7,16 @@ import imageio
 import time
 from tqdm import tqdm, trange
 
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-# elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
-    # device = torch.device('mps')
-else:
-    device = torch.device('cpu')
-
 torch.autograd.set_detect_anomaly(True)
+logger = utils.logger
 
 
-def train(args, logger):
+def train(args):
     ################################################
     # load data
     ################################################
     images, poses, render_poses, hwf, i_split, near, far = utils.load_data(
-        args, logger)
+        args)
     i_train, i_val, i_test = i_split
 
     if args.render_test:
@@ -33,9 +27,9 @@ def train(args, logger):
     H, W = int(H), int(W)
     hwf = [H, W, focal]
 
-    print("images", images.shape)
-    print("poses", poses.shape)
-    print("render_poses", render_poses.shape)
+    logger.info("images {}".format(images.shape))
+    logger.info("poses {}".format(poses.shape))
+    logger.info("render_poses {}".format(render_poses.shape))
     # print("hwf", hwf)
     # print("i_split", i_split)
     # print("near/far", near.shape, far.shape)
@@ -62,7 +56,7 @@ def train(args, logger):
 
     # Move testing data to GPU
 
-    render_poses = torch.Tensor(render_poses).to(device)
+    render_poses = torch.Tensor(render_poses).to(utils.device)
 
     ############################################################
     # In test circuit
@@ -71,16 +65,16 @@ def train(args, logger):
     basedir = args.basedir
     expname = args.expname
     if args.render_only:
-        print('RENDER ONLY')
+        logger.info('RENDER ONLY')
         with torch.no_grad():
             testsavedir = os.path.join(basedir, expname, 'renderonly_{}_{:06d}'.format(
                 'test' if args.render_test else 'path', start))
             os.makedirs(testsavedir, exist_ok=True)
-            print('test poses shape', render_poses.shape)
+            logger.info('test poses shape', render_poses.shape)
 
             rgbs, _ = utils.render_path(render_poses, hwf, args.chunk, render_kwargs_test,
                                         savedir=testsavedir, render_factor=args.render_factor)
-            print('Done rendering', testsavedir)
+            logger.info('Done rendering', testsavedir)
             imageio.mimwrite(os.path.join(testsavedir, 'video.mp4'),
                              utils.to8b(rgbs), fps=30, quality=8)
 
@@ -112,21 +106,21 @@ def train(args, logger):
         # [N_imgs*H*W, ro+rd+rgb (3), 3]
         rays_rgb = np.reshape(rays_rgb, [-1, 3, 3])
         rays_rgb = rays_rgb.astype(np.float32)
-        print('shuffle rays')
+        logger.info('shuffle rays')
         np.random.shuffle(rays_rgb)
-        print('done')
+        logger.info('done')
         i_batch = 0
 
         # move to gpu
-        images = torch.Tensor(images).to(device)
-        rays_rgb = torch.Tensor(rays_rgb).to(device)
+        images = torch.Tensor(images).to(utils.device)
+        rays_rgb = torch.Tensor(rays_rgb).to(utils.device)
 
-    poses = torch.Tensor(poses).to(device)
+    poses = torch.Tensor(poses).to(utils.device)
 
-    print('Begin')
-    print('TRAIN views are', i_train)
-    print('TEST views are', i_test)
-    print('VAL views are', i_val)
+    logger.info('Begin')
+    logger.info('TRAIN views are', i_train)
+    logger.info('TEST views are', i_test)
+    logger.info('VAL views are', i_val)
     N_iters = args.N_iter
 
     start = start + 1
@@ -189,14 +183,14 @@ def train(args, logger):
                 'network_fine_state_dict': render_kwargs_train['network_fine'].state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, path)
-            print('Saved checkpoints at', path)
+            logger.info('Saved checkpoints at', path)
 
         if i % args.i_video == 0 and i > 0:
             # Turn on testing mode
             with torch.no_grad():
                 rgbs, disps = utils.render_path(
                     render_poses, hwf, args.chunk, render_kwargs_test)
-            print('Done, saving', rgbs.shape, disps.shape)
+            logger.info('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(
                 basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4',
@@ -215,11 +209,11 @@ def train(args, logger):
             testsavedir = os.path.join(
                 basedir, expname, 'testset_{:06d}'.format(i))
             os.makedirs(testsavedir, exist_ok=True)
-            print('test poses shape', poses[i_test].shape)
+            logger.info('test poses shape', poses[i_test].shape)
             with torch.no_grad():
                 utils.render_path(torch.Tensor(poses[i_test]).to(
-                    device), hwf, args.chunk, render_kwargs_test, gt_imgs=images[i_test], savedir=testsavedir)
-            print('Saved test set')
+                    utils.device), hwf, args.chunk, render_kwargs_test, gt_imgs=images[i_test], savedir=testsavedir)
+            logger.info('Saved test set')
 
         if i % args.i_print == 0:
             tqdm.write(
@@ -241,7 +235,7 @@ def train(args, logger):
                     os.makedirs(valimgdir, exist_ok=True)
                     imageio.imwrite(os.path.join(valimgdir, 'target.png'), utils.to8b(target.cpu().numpy()))
                 imageio.imwrite(os.path.join(valimgdir, '{:06d}.png'.format(i)), utils.to8b(rgb.cpu().numpy()))
-                print(f'Saved {i} validation images. psnr: {psnr.item()}')
+                logger.info(f'Saved {i} validation images. psnr: {psnr.item()}')
 
 
         global_step += 1
@@ -275,7 +269,7 @@ def create_nerf(args):
     # first coarse MLP with stratified sampling only
     model = NeRF(D=args.netdepth, W=args.netwidth,
                  input_ch=input_ch, output_ch=output_ch, skips=skips,
-                 input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(device)
+                 input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(utils.device)
     grad_vars = list(model.parameters())
 
     # second fine MLP combined with importance sampling
@@ -283,7 +277,7 @@ def create_nerf(args):
     if args.N_importance > 0:
         model_fine = NeRF(D=args.netdepth_fine, W=args.netwidth_fine,
                           input_ch=input_ch, output_ch=output_ch, skips=skips,
-                          input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(device)
+                          input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(utils.device)
         grad_vars += list(model_fine.parameters())
 
     def network_query_fn(inputs, viewdirs, network_fn): return run_network(
@@ -309,10 +303,10 @@ def create_nerf(args):
         ckpts = [os.path.join(basedir, expname, f) for f in sorted(
             os.listdir(os.path.join(basedir, expname))) if 'tar' in f]
 
-    print('Found ckpts', ckpts)
+    logger.info('Found ckpts', ckpts)
     if len(ckpts) > 0 and not args.no_reload:
         ckpt_path = ckpts[-1]
-        print('Reloading from', ckpt_path)
+        logger.info('Reloading from', ckpt_path)
         ckpt = torch.load(ckpt_path)
 
         start = ckpt['global_step']
@@ -341,7 +335,7 @@ def create_nerf(args):
 
     # NDC only good for LLFF-style forward facing data
     if args.dataset_type != 'llff' or args.no_ndc:
-        print('Not ndc!')
+        logger.info('Not ndc!')
         render_kwargs_train['ndc'] = False
         render_kwargs_train['lindisp'] = args.lindisp
 
@@ -403,6 +397,5 @@ if __name__ == '__main__':
     # set up logger
     os.makedirs(os.path.join(args.basedir, args.expname), exist_ok=True)
     f = os.path.join(args.basedir, args.expname, "audit.log")
-    logger = utils.setup_logger(f)
-
-    train(args, logger)
+    utils.setup_logger(f)
+    train(args)

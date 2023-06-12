@@ -5,8 +5,9 @@ import os
 import utils
 import imageio
 import torch.nn.functional as F
+import utils
 
-
+logger = utils.logger
 def get_rays(H, W, focal, c2w):
     """
 
@@ -33,7 +34,7 @@ def get_rays(H, W, focal, c2w):
     """
     dirs = torch.stack(
         [(i - 0.5 * W) / focal, -(j - 0.5 * H) / focal, -torch.ones_like(i)], -1
-    ).to(device) 
+    ).to(utils.device) 
     # stack dir vectors in col
     # Rotate ray directions from camera frame to the world frame
     # dot product, equals to: [c2w.dot(dir) for dir in dirs]
@@ -61,7 +62,7 @@ def get_rays_np(H, W, focal, c2w):
 
 
 def render_path(
-    render_poses, hwf, chunk, render_kwargs, savedir=None, render_factor=0
+    render_poses, hwf, chunk, render_kwargs, gt_imgs=None, savedir=None, render_factor=0
 ):
     """
     render points along the path (for all render poses)
@@ -86,8 +87,9 @@ def render_path(
     disps = []
 
     t = time.time()
+    psnr = 0
     for i, c2w in enumerate(render_poses):
-        print(i, time.time() - t)
+        logger.info(i, time.time() - t)
         t = time.time()
         rgb, disp, acc, _ = render(
             H, W, focal, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
@@ -95,12 +97,23 @@ def render_path(
         rgbs.append(rgb.cpu().numpy())
         disps.append(disp.cpu().numpy())
         if i == 0:
-            print(rgb.shape, disp.shape)
+            logger.info(rgb.shape, disp.shape)
+
+        # print test psnr
+        if gt_imgs is not None and render_factor==0:
+            # p = -10. * np.log10(np.mean(np.square(rgb.cpu().numpy() - gt_imgs[i])))
+            p = utils.mse2psnr(utils.img2mse(rgb, gt_imgs[i]))
+            logger.info(f"testing {i} psnr {p}")
+            psnr = psnr + p
+        
 
         if savedir is not None:
             rgb8 = utils.to8b(rgbs[-1])
             filename = os.path.join(savedir, "{:03d}.png".format(i))
             imageio.imwrite(filename, rgb8)
+
+    avg = psnr / len(render_poses)
+    logger.info(f"avg psnr {avg}")
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
@@ -219,13 +232,6 @@ def render(
     ret_dict = {k: all_ret[k] for k in all_ret if k not in k_extract}
     return ret_list + [ret_dict]
 
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-# elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
-    # device = torch.device('mps')
-else:
-    device = torch.device('cpu')
-
 def render_rays(
     rays,
     network_fn,
@@ -286,7 +292,7 @@ def render_rays(
     bounds = torch.reshape(rays[..., 6:8], [-1, 1, 2])  # [-1, batch_size, 2]
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]?? [batch_size, 1]
 
-    t_vals = torch.linspace(0.0, 1.0, steps=N_samples).to(device)
+    t_vals = torch.linspace(0.0, 1.0, steps=N_samples).to(utils.device)
     if not lindisp:
         # z = near * (1 - t) + far * t
         #print(near.is_cuda)
@@ -310,7 +316,7 @@ def render_rays(
         upper = torch.concat([mids, z_vals[..., -1:]], -1)
         lower = torch.concat([z_vals[..., :1], mids], -1)
         # random perturb
-        t_rand = torch.rand(z_vals.shape).to(device)
+        t_rand = torch.rand(z_vals.shape).to(utils.device)
 
         # Pytest, overwrite u with numpy's fixed random numbers
         if pytest:
@@ -376,9 +382,9 @@ def render_rays(
     if verbose:
         for k in ret:
             if (torch.isnan(ret[k]).any()):
-                print(f"! [Numerical Error] {k} contains nan.")
+                logger.info(f"! [Numerical Error] {k} contains nan.")
             elif (torch.isinf(ret[k]).any()):
-                print(f"! [Numerical Error] {k} contains inf.")
+                logger.info(f"! [Numerical Error] {k} contains inf.")
 
     return ret
 
@@ -413,7 +419,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0, pytest=False, white_bkgd=F
     # the last distance is infinity
     dists = z_vals[..., 1:] - z_vals[..., :-1]
     dists = torch.concat([dists, torch.Tensor([1e10]).expand(
-        dists[..., :1].shape).to(device)], -1)  # [N_rays, N_samples]
+        dists[..., :1].shape).to(utils.device)], -1)  # [N_rays, N_samples]
     dists = dists * torch.norm(rays_d[...,None,:], dim=-1)
     
 
@@ -434,7 +440,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0, pytest=False, white_bkgd=F
     # higher density imply higher likelihood of being absorbed at this point.
     # add noise to regularize network during training and prevent floater artifacts
     # [N_rays, N_samples]
-    noise = noise.to(device)
+    noise = noise.to(utils.device)
     density = 1. - torch.exp(-F.relu(raw[..., 3] + noise) * dists)
 
     ##########
@@ -447,7 +453,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0, pytest=False, white_bkgd=F
     # exclusive cumprod is needed here i.e. cumprod([2, 3, 4]) = [1, 2, 6]
     # add dumpy 1 in the head of list, and remove the last one, i.e. [1, 2, 3, 4] = [1, 2, 6]
     weights = density * torch.cumprod(torch.cat([torch.ones(
-        (density.shape[0], 1)).to(device), 1.-density + 1e-10], -1), -1)[:, :-1]  # [N_rays, N_samples]
+        (density.shape[0], 1)).to(utils.device), 1.-density + 1e-10], -1), -1)[:, :-1]  # [N_rays, N_samples]
 
     # compute weighted color
     # C(r) = sum_{i}^{N_sample} weight * color
@@ -511,7 +517,7 @@ def sample(z_vals, weights, N_importance, det=False, pytest=False):
     # invert CDF
     # reference: https://stephens999.github.io/fiveMinuteStats/inverse_transform_sampling.html
     # find the index of variable k which satisfy sum_{i}^{k-1} p_i < u <= sum_{i}^{k} p_i
-    u = u.contiguous().to(device)
+    u = u.contiguous().to(utils.device)
     #print(u.is_cuda)
     #print(cdf.is_cuda)
     idx = torch.searchsorted(cdf, u, right=True)
@@ -543,7 +549,7 @@ def sample(z_vals, weights, N_importance, det=False, pytest=False):
 
 
 def ndc_rays(H, W, focal, near, rays_o, rays_d):
-    """Normalized device coordinate rays.
+    """Normalized utils.device coordinate rays.
 
     Space such that the canvas is a cube with sides [-1, 1] in each axis.
     

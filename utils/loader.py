@@ -1,8 +1,9 @@
 import loader
 import numpy as np 
 from typing import Tuple
+import utils
 
-def load_data(args, logger):
+def load_data(args):
     """
     @params args: config args
     @params logger: logger
@@ -14,6 +15,7 @@ def load_data(args, logger):
     @return near: float
     @return far: float
     """
+    logger = utils.logger
     if args.dataset_type == 'llff':
         images, poses, bds, render_poses, i_test = loader.load_llff_data(args.datadir, args.factor,
                                                                   recenter=True, bd_factor=.75,
