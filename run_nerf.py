@@ -231,8 +231,8 @@ def train(args):
                 psnr = utils.mse2psnr(utils.img2mse(rgb, target))
                 # Save out the validation image
                 valimgdir = os.path.join(basedir, expname, 'val_imgs')
+                os.makedirs(valimgdir, exist_ok=True)
                 if i == args.i_img:
-                    os.makedirs(valimgdir, exist_ok=True)
                     imageio.imwrite(os.path.join(valimgdir, 'target.png'), utils.to8b(target.cpu().numpy()))
                 imageio.imwrite(os.path.join(valimgdir, '{:06d}.png'.format(i)), utils.to8b(rgb.cpu().numpy()))
                 logger.info(f'Saved {i} validation images. psnr: {psnr.item()}')
