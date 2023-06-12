@@ -1,15 +1,13 @@
 import configargparse
 
 def config_parser() -> configargparse.ArgumentParser : 
-    parser = configargparse.ArgParser(default_config_files=['./config/default.yml'])
+    parser = configargparse.ArgumentParser()
     parser.add_argument('--config', is_config_file=True, 
                         help='config file path')
     parser.add_argument("--expname", type=str, 
                         help='experiment name')
-    parser.add_argument("--basedir", type=str, default='./checkpoints/', 
+    parser.add_argument("--basedir", type=str, default='./logs/', 
                         help='where to store ckpts logs')
-    parser.add_argument("--logpath", type=str, default='./logs/audit.log', 
-                        help='where to store logs')
     parser.add_argument("--datadir", type=str, default='./data/llff/fern', 
                         help='input data directory')
 
@@ -105,7 +103,7 @@ def config_parser() -> configargparse.ArgumentParser :
                         help='frequency of console printout and metric loggin')
     parser.add_argument("--i_img",     type=int, default=500, 
                         help='frequency of tensorboard image logging')
-    parser.add_argument("--i_weights", type=int, default=10000, 
+    parser.add_argument("--i_weights", type=int, default=5000, 
                         help='frequency of weight ckpt saving')
     parser.add_argument("--i_testset", type=int, default=50000, 
                         help='frequency of testset saving')

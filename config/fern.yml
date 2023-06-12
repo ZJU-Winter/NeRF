@@ -1,6 +1,7 @@
 ### INPUT
 datadir: ./data/nerf_llff_data/fern
 dataset_type: llff
+expname: fern
 
 N_rand: 1024
 N_samples: 64
