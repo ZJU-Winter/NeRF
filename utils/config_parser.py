@@ -1,7 +1,7 @@
 import configargparse
 
 def config_parser() -> configargparse.ArgumentParser : 
-    parser = configargparse.ArgParser(default_config_files=['./config/default.yml'])
+    parser = configargparse.ArgumentParser()
     parser.add_argument('--config', is_config_file=True, 
                         help='config file path')
     parser.add_argument("--expname", type=str, 

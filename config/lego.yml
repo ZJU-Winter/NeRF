@@ -1,6 +1,7 @@
 ### INPUT
 datadir: ./data/nerf_synthetic/lego
 dataset_type: blender
+expname: lego
 
 no_batching: True
 
