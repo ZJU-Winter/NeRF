@@ -1,5 +1,5 @@
 ### INPUT
-datadir: ./data/nerf_synthetic/lego
+datadir: ../nerf-pytorch/data/nerf_synthetic/lego
 dataset_type: blender
 expname: lego
 
