@@ -1,7 +1,7 @@
 import numpy as np
 import os, imageio
-
-
+import visualizer
+import matplotlib as plt
 def _minify(basedir, factors=[], resolutions=[]):
     needtoload = False
     for r in factors:
@@ -62,6 +62,9 @@ def _minify(basedir, factors=[], resolutions=[]):
 
 def _load_data(basedir, factor=None, width=None, height=None, load_imgs=True):
     poses_arr = np.load(os.path.join(basedir, "poses_bounds.npy"))
+    # why transpose?
+    # in colmap format, the camera-to-world transform is [right, down, forwards] or [x,-y,-z]
+    # from the point of view of the camera, the three axes arr [down, right, backwards] or [-y,x,z]
     poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])
     bds = poses_arr[:, -2:].transpose([1, 0])
 
@@ -258,8 +261,7 @@ def spherify_poses(poses, bds):
 
 
 def load_llff_data(
-    basedir, factor=8, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False
-):
+    basedir, visdir, factor=8, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False):
     poses, bds, imgs = _load_data(
         basedir, factor=factor
     )  # factor=8 downsamples original imgs by 8x
@@ -273,6 +275,9 @@ def load_llff_data(
     bds = np.moveaxis(bds, -1, 0).astype(np.float32)
 
     # Rescale if bd_factor is provided
+    print("bds min",bds.min())
+    print("bds max",bds.max())
+
     sc = 1.0 if bd_factor is None else 1.0 / (bds.min() * bd_factor)
     poses[:, :3, 3] *= sc
     bds *= sc
@@ -331,4 +336,39 @@ def load_llff_data(
     images = images.astype(np.float32)
     poses = poses.astype(np.float32)
 
+    ### visualize camera pose
+    min_d = poses[:, :3, 3].min(axis=0)
+    max_d = poses[:, :3, 3].max(axis=0)
+    print(f"min: {min_d} max: {max_d}")
+
+    vis = visualizer.CameraPoseVisualizer([min_d[0] * 2., max_d[0] * 2.], [min_d[1] * 2., max_d[1] * 2.], [min_d[2] * 2., max_d[2] * 2.])
+    plist = [poses, render_poses]
+    # plist = [render_poses]
+    # plist = [poses]
+
+    clist = ['k', 'c']
+    c2w_44 = np.concatenate([c2w[:, :-1], np.array([[0, 0, 0, 1]])], 0)
+    for l, c in zip(plist, clist):
+        plen = l.shape[0]
+        print(plen)
+        hwf = l[0,:3,-1]
+        for idx, p in enumerate(l[::2]):
+            #print("p shape", p[:,:-1].shape)
+            # print("prepare p ", p.shape)
+            right = p[:, 0]
+            up = p[:, 1]
+            eye = - p[:, 2]
+            pos = p[:, 3]
+            c2w = np.stack([right, up, eye, pos], 1)
+            # print(c2w)
+            p = np.concatenate([c2w, np.array([[0, 0, 0, 1]])], 0)
+            # print(p)
+            # print(hwf)
+            # vis.extrinsic2pyramid(p, plt.cm.rainbow(idx % plen), 0.1, aspect_ratio=hwf[0]/hwf[1])
+            vis.extrinsic2pyramid(p, c, 0.1, aspect_ratio=hwf[0]/hwf[1])
+
+    os.makedirs(visdir, exist_ok=True)
+    path = os.path.join(visdir, "camera_pose.jpg")
+    vis.show()
+    vis.save(path)
     return images, poses, bds, render_poses, i_test

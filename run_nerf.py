@@ -418,7 +418,6 @@ def batchify(fn, chunk):
 
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
     # set up config parser
     parser = utils.config_parser()
     args = parser.parse_args()
