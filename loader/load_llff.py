@@ -261,7 +261,7 @@ def spherify_poses(poses, bds):
 
 
 def load_llff_data(
-    basedir, expname, factor=8, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False):
+    basedir, visdir, factor=8, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False):
     poses, bds, imgs = _load_data(
         basedir, factor=factor
     )  # factor=8 downsamples original imgs by 8x
@@ -352,7 +352,6 @@ def load_llff_data(
             p = np.concatenate([p[0:1, :-1], p[1:2, :-1],-p[2:3, :-1], np.array([[0, 0, 0, 1]])], 0)
             # print(p.shape)
             vis.extrinsic2pyramid(p, c, 5)
-    visdir = os.path.join(basedir, expname, "visualize")
     os.makedirs(visdir, exist_ok=True)
     path = os.path.join(visdir, "camera_pose.jpg")
     vis.save(path)
