@@ -17,7 +17,7 @@ def load_data(args):
     """
     logger = utils.logger
     if args.dataset_type == 'llff':
-        images, poses, bds, render_poses, i_test = loader.load_llff_data(args.datadir, args.factor,
+        images, poses, bds, render_poses, i_test = loader.load_llff_data(args.datadir, args.expname, args.factor,
                                                                   recenter=True, bd_factor=.75,
                                                                   spherify=args.spherify)
         hwf = poses[0,:3,-1]

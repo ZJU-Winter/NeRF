@@ -1,7 +1,7 @@
 import numpy as np
 import os, imageio
 import visualizer
-
+import matplotlib as plt
 def _minify(basedir, factors=[], resolutions=[]):
     needtoload = False
     for r in factors:
@@ -62,6 +62,9 @@ def _minify(basedir, factors=[], resolutions=[]):
 
 def _load_data(basedir, factor=None, width=None, height=None, load_imgs=True):
     poses_arr = np.load(os.path.join(basedir, "poses_bounds.npy"))
+    # why transpose?
+    # in colmap format, the camera-to-world transform is [right, down, forwards] or [x,-y,-z]
+    # from the point of view of the camera, the three axes arr [down, right, backwards] or [-y,x,z]
     poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])
     bds = poses_arr[:, -2:].transpose([1, 0])
 
@@ -258,8 +261,7 @@ def spherify_poses(poses, bds):
 
 
 def load_llff_data(
-    basedir, factor=8, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False
-):
+    basedir, expname, factor=8, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False):
     poses, bds, imgs = _load_data(
         basedir, factor=factor
     )  # factor=8 downsamples original imgs by 8x
@@ -335,13 +337,23 @@ def load_llff_data(
     poses = poses.astype(np.float32)
 
     ### visualize camera pose
-    min_d = poses[:, :3, 3].min(axis=1)
-    max_d = poses[:, :3, 3].max(axis=1)
-    #([-50, 50], [-50, 50], [0, 100])
-    vis = visualizer.camera_pose_visualizer([min_d[0] * 10., max_d[0] * 10.], [min_d[1] * 10., max_d[1] * 10.], [min_d[2] * 10., max_d[2] * 10.])
-    for p in poses:
-        visualizer.extrinsic2pyramid(p[:3, 3], 'c', 10)
-    vissavedir = os.path.join(basedir, "visualize")
-    os.makedirs(vissavedir, exist_ok=True)
-    visualizer.save("camera_pose.jpg")
+    min_d = poses[:, :3, 3].min(axis=0)
+    max_d = poses[:, :3, 3].max(axis=0)
+    print(f"min: {min_d} max: {max_d}")
+
+    vis = visualizer.CameraPoseVisualizer([min_d[0] * 10., max_d[0] * 10.], [min_d[1] * 10., max_d[1] * 10.], [min_d[2] * 10., max_d[2] * 10.])
+    plist = [poses, render_poses]
+    clist = ['c', 'k']
+    for l, c in zip(plist, clist):
+        plen = l.shape[0]
+        for idx, p in enumerate(l[::5]):
+            #print("p shape", p[:,:-1].shape)
+            # print("prepare p ", p.shape)
+            p = np.concatenate([p[0:1, :-1], p[1:2, :-1],-p[2:3, :-1], np.array([[0, 0, 0, 1]])], 0)
+            # print(p.shape)
+            vis.extrinsic2pyramid(p, c, 5)
+    visdir = os.path.join(basedir, expname, "visualize")
+    os.makedirs(visdir, exist_ok=True)
+    path = os.path.join(visdir, "camera_pose.jpg")
+    vis.save(path)
     return images, poses, bds, render_poses, i_test
