@@ -253,47 +253,24 @@ def train(args, logger):
 
         if i % args.i_print == 0:
             tqdm.write(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
-        """
-            print(expname, i, psnr.numpy(), loss.numpy(), global_step.numpy())
-            print('iter time {:.05f}'.format(dt))
-
-            with tf.contrib.summary.record_summaries_every_n_global_steps(args.i_print):
-                tf.contrib.summary.scalar('loss', loss)
-                tf.contrib.summary.scalar('psnr', psnr)
-                tf.contrib.summary.histogram('tran', trans)
-                if args.N_importance > 0:
-                    tf.contrib.summary.scalar('psnr0', psnr0)
-
-
-            if i%args.i_img==0:
-
-                # Log a rendered validation view to Tensorboard
-                img_i=np.random.choice(i_val)
+            
+            if i % args.i_img == 0 and i > 0:
+                # log a validation view
+                # img_i = np.random.choice(i_val)
+                img_i = 3
                 target = images[img_i]
-                pose = poses[img_i, :3,:4]
+                pose = poses[img_i, :3, :4]
                 with torch.no_grad():
-                    rgb, disp, acc, extras = render(H, W, focal, chunk=args.chunk, c2w=pose,
-                                                        **render_kwargs_test)
-
-                psnr = mse2psnr(img2mse(rgb, target))
-
-                with tf.contrib.summary.record_summaries_every_n_global_steps(args.i_img):
-
-                    tf.contrib.summary.image('rgb', to8b(rgb)[tf.newaxis])
-                    tf.contrib.summary.image('disp', disp[tf.newaxis,...,tf.newaxis])
-                    tf.contrib.summary.image('acc', acc[tf.newaxis,...,tf.newaxis])
-
-                    tf.contrib.summary.scalar('psnr_holdout', psnr)
-                    tf.contrib.summary.image('rgb_holdout', target[tf.newaxis])
-
-
-                if args.N_importance > 0:
-
-                    with tf.contrib.summary.record_summaries_every_n_global_steps(args.i_img):
-                        tf.contrib.summary.image('rgb0', to8b(extras['rgb0'])[tf.newaxis])
-                        tf.contrib.summary.image('disp0', extras['disp0'][tf.newaxis,...,tf.newaxis])
-                        tf.contrib.summary.image('z_std', extras['z_std'][tf.newaxis,...,tf.newaxis])
-        """
+                    rgb, disp, acc, extras = utils.render(H, W, focal, chunk=args.chunk, c2w=pose,
+                                                **render_kwargs_test)
+                psnr = utils.mse2psnr(utils.img2mse(rgb, target))
+                # Save out the validation image
+                valimgdir = os.path.join(basedir, expname, 'val_imgs')
+                if i == args.i_img:
+                    os.makedirs(valimgdir, exist_ok=True)
+                    imageio.imwrite(os.path.join(valimgdir, 'target.png'), utils.to8b(target.cpu().numpy()))
+                imageio.imwrite(os.path.join(valimgdir, '{:06d}.png'.format(i)), utils.to8b(rgb.cpu().numpy()))
+                print(f'Saved {i} validation images. psnr: {psnr.item()}')
         global_step += 1
 
 
