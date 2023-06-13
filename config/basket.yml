@@ -17,5 +17,5 @@ use_viewdirs: True
 raw_noise_std: 1e0
 
 i_video: 30000
-i_img: 2000
+i_img: 5000
 spherify: true

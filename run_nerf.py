@@ -9,7 +9,8 @@ from tqdm import tqdm, trange
 
 torch.autograd.set_detect_anomaly(True)
 logger = utils.logger
-
+if torch.cuda.is_available():
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 def train(args):
     ################################################
@@ -98,7 +99,7 @@ def train(args):
         rays = [utils.get_rays_np(H, W, focal, p) for p in poses[:, :3, :4]]
         rays = np.stack(rays, axis=0)  # [N_camera, ro+rd (2), H, W, 3]
         # [N_imgs, ro+rd+rgb (3), H, W, 3]
-        rays_rgb = np.concatenate([rays, images[:, None, ...]], 1)
+        rays_rgb = np.concatenate([rays, images[:, None]], 1)
         # [N_imgs, H, W, ro+rd+rgb (3), 3]
         rays_rgb = np.transpose(rays_rgb, [0, 2, 3, 1, 4])
         # train images only, [N_train_imgs, H, W, ro+rd+rgb, 3]
@@ -136,7 +137,9 @@ def train(args):
 
             i_batch += N_rand
             if i_batch >= rays_rgb.shape[0]:
-                np.random.shuffle(rays_rgb)
+                #np.random.shuffle(rays_rgb)
+                rand_idx = torch.randperm(rays_rgb.shape[0])
+                rays_rgb = rays_rgb[rand_idx]
                 i_batch = 0
 
         # todo

@@ -1,6 +1,7 @@
 ### INPUT
-# datadir: ../nerf-pytorch/data/nerf_llff_data/fern
-datadir: ./data/nerf_llff_data/fern
+datadir: ../nerf-pytorch/data/nerf_llff_data/fern
+#datadir: ./data/nerf_llff_data/fern
+
 
 dataset_type: llff
 expname: fern
@@ -13,7 +14,7 @@ factor: 8
 llffhold: 8
 i_video: 20000
 N_iter: 60000
-i_img: 2000
+i_img: 5000
 use_viewdirs: True
 raw_noise_std: 1e0
 
