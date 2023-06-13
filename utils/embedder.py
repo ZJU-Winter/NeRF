@@ -6,7 +6,7 @@ def get_embedder(multires, i=0):
     """
     positional encoding (embedding)
     @parameter multires: maximum frequency (after log2)
-    @parameter i: default false (0), if true (1), return identity
+    @parameter i: default 0, if set to -1, return identity
     @return embed: embedding function
     @return out_dim: output dimmension
     """

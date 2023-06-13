@@ -47,7 +47,7 @@ def load_data(args, logger):
     elif args.dataset_type == 'blender':
         images, poses, render_poses, hwf, i_split = loader.load_blender_data(args.datadir, args.half_res, args.testskip)
         logger.info('Loaded blender %s %s %s %s', images.shape, render_poses.shape, hwf, args.datadir)
-        i_train, i_val, i_test = i_split
+        # i_train, i_val, i_test = i_split
         
         near = 2.
         far = 6.
@@ -62,8 +62,8 @@ def load_data(args, logger):
                                                                  basedir=args.datadir,
                                                                  testskip=args.testskip)
 
-        print('Loaded deepvoxels', images.shape, render_poses.shape, hwf, args.datadir)
-        i_train, i_val, i_test = i_split
+        logger.info('Loaded deepvoxels %s %s %s %s', images.shape, render_poses.shape, hwf, args.datadir)
+        # i_train, i_val, i_test = i_split
 
         hemi_R = np.mean(np.linalg.norm(poses[:,:3,-1], axis=-1))
         near = hemi_R-1.
