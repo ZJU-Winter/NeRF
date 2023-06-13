@@ -6,16 +6,17 @@ from tqdm import tqdm, trange
 import utils
 from model import NeRF
 
+torch.autograd.set_detect_anomaly(True)
+logger = utils.logger
 if torch.cuda.is_available():
-    device = torch.device("cuda")
-else:
-    device = torch.device("cpu")
-np.random.seed(0)
+    torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
-
-def train(args, logger):
-    # Load data
-    images, poses, render_poses, hwf, i_split, near, far = utils.load_data(args, logger)
+def train(args):
+    ################################################
+    # load data
+    ################################################
+    images, poses, render_poses, hwf, i_split, near, far = utils.load_data(
+        args)
     i_train, i_val, i_test = i_split
 
     # Cast intrinsics to right types
@@ -23,8 +24,12 @@ def train(args, logger):
     H, W = int(H), int(W)
     hwf = [H, W, focal]
 
-    if args.render_test:
-        render_poses = np.array(poses[i_test])
+    logger.info("images {}".format(images.shape))
+    logger.info("poses {}".format(poses.shape))
+    logger.info("render_poses {}".format(render_poses.shape))
+    # print("hwf", hwf)
+    # print("i_split", i_split)
+    # print("near/far", near.shape, far.shape)
 
     # Create log dir and copy the config file
     basedir = args.basedir
@@ -54,14 +59,15 @@ def train(args, logger):
     render_kwargs_test.update(bds_dict)
 
     # Move testing data to GPU
-    render_poses = torch.Tensor(render_poses).to(device)
+
+    render_poses = torch.Tensor(render_poses).to(utils.device)
 
     ############################################################
     # In test circuit
     # (Short circuit if only rendering out from trained model)
     ############################################################
     if args.render_only:
-        print("RENDER ONLY")
+        logger.info('RENDER ONLY')
         with torch.no_grad():
             if args.render_test:
                 # render_test switches to test poses
@@ -73,11 +79,11 @@ def train(args, logger):
             testsavedir = os.path.join(basedir, expname, 'renderonly_{}_{:06d}'.format(
                 'test' if args.render_test else 'path', start))
             os.makedirs(testsavedir, exist_ok=True)
-            print("test poses shape", render_poses.shape)
+            logger.info(f'test poses shape {render_poses.shape}')
 
             rgbs, _ = utils.render_path(render_poses, hwf, args.chunk, render_kwargs_test,
                                         savedir=testsavedir, render_factor=args.render_factor)
-            print("Done rendering", testsavedir)
+            logger.info('Done rendering'.format(testsavedir))
             imageio.mimwrite(os.path.join(testsavedir, 'video.mp4'),
                              utils.to8b(rgbs), fps=30, quality=8)
 
@@ -102,24 +108,22 @@ def train(args, logger):
         # [N_imgs*H*W, ro+rd+rgb (3), 3]
         rays_rgb = np.reshape(rays_rgb, [-1, 3, 3])
         rays_rgb = rays_rgb.astype(np.float32)
-        print("shuffle rays")
+        logger.info('shuffle rays')
         np.random.shuffle(rays_rgb)
-
-        print("done")
+        logger.info('done')
         i_batch = 0
 
-    # Move training data to GPU
-    if use_batching:
-        images = torch.Tensor(images).to(device)
-    poses = torch.Tensor(poses).to(device)
-    if use_batching:
-        rays_rgb = torch.Tensor(rays_rgb).to(device)
+        # move to gpu
+        images = torch.Tensor(images).to(utils.device)
+        rays_rgb = torch.Tensor(rays_rgb).to(utils.device)
 
-    N_iters = args.N_iter + 1
-    print("Begin")
-    print("TRAIN views are", i_train)
-    print("TEST views are", i_test)
-    print("VAL views are", i_val)
+    poses = torch.Tensor(poses).to(utils.device)
+
+    logger.info('Begin')
+    logger.info('TRAIN views are {}'.format(i_train))
+    logger.info('TEST views are {}'.format(i_test))
+    logger.info('VAL views are {}'.format(i_val))
+    N_iters = args.N_iter
 
     start = start + 1
     for i in trange(start, N_iters):
@@ -132,7 +136,7 @@ def train(args, logger):
 
             i_batch += N_rand
             if i_batch >= rays_rgb.shape[0]:
-                print("Shuffle data after an epoch!")
+                #np.random.shuffle(rays_rgb)
                 rand_idx = torch.randperm(rays_rgb.shape[0])
                 rays_rgb = rays_rgb[rand_idx]
                 i_batch = 0
@@ -202,29 +206,21 @@ def train(args, logger):
         # log and save
         ############################################################
         if i % args.i_weights == 0:
-            path = os.path.join(basedir, expname, "{:06d}.tar".format(i))
-            torch.save(
-                {
-                    "global_step": global_step,
-                    "network_fn_state_dict": render_kwargs_train[
-                        "network_fn"
-                    ].state_dict(),
-                    "network_fine_state_dict": render_kwargs_train[
-                        "network_fine"
-                    ].state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                },
-                path
-            )
-            print("Saved checkpoints at", path)
+            path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
+            torch.save({
+                'global_step': global_step,
+                'network_fn_state_dict': render_kwargs_train['network_fn'].state_dict(),
+                'network_fine_state_dict': render_kwargs_train['network_fine'].state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, path)
+            logger.info('Saved checkpoints at {}'.format(path))
 
         if i % args.i_video == 0 and i > 0:
             # Turn on testing mode
             with torch.no_grad():
                 rgbs, disps = utils.render_path(
-                    render_poses, hwf, args.chunk, render_kwargs_test
-                )
-            print("Done, saving", rgbs.shape, disps.shape)
+                    render_poses, hwf, args.chunk, render_kwargs_test)
+            logger.info(f'Done, saving {rgbs.shape} {disps.shape}')
             moviebase = os.path.join(
                 basedir, expname, "{}_spiral_{:06d}_".format(expname, i)
             )
@@ -239,20 +235,16 @@ def train(args, logger):
         if i % args.i_testset == 0 and i > 0:
             testsavedir = os.path.join(basedir, expname, "testset_{:06d}".format(i))
             os.makedirs(testsavedir, exist_ok=True)
-            print("test poses shape", poses[i_test].shape)
+            logger.info('test poses shape {}'.format(poses[i_test].shape))
             with torch.no_grad():
-                utils.render_path(
-                    torch.Tensor(poses[i_test]).to(device),
-                    hwf,
-                    args.chunk,
-                    render_kwargs_test,
-                    gt_imgs=images[i_test],
-                    savedir=testsavedir,
-                )
-            print("Saved test set")
+                utils.render_path(torch.Tensor(poses[i_test]).to(
+                    utils.device), hwf, args.chunk, render_kwargs_test, gt_imgs=images[i_test], savedir=testsavedir)
+            logger.info('Saved test set')
 
         if i % args.i_print == 0:
             tqdm.write(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
+            logger.info(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
+
             
             if i % args.i_img == 0 and i > 0:
                 # log a validation view
@@ -266,11 +258,13 @@ def train(args, logger):
                 psnr = utils.mse2psnr(utils.img2mse(rgb, target))
                 # Save out the validation image
                 valimgdir = os.path.join(basedir, expname, 'val_imgs')
+                os.makedirs(valimgdir, exist_ok=True)
                 if i == args.i_img:
-                    os.makedirs(valimgdir, exist_ok=True)
                     imageio.imwrite(os.path.join(valimgdir, 'target.png'), utils.to8b(target.cpu().numpy()))
                 imageio.imwrite(os.path.join(valimgdir, '{:06d}.png'.format(i)), utils.to8b(rgb.cpu().numpy()))
-                print(f'Saved {i} validation images. psnr: {psnr.item()}')
+                logger.info(f'Saved {i} validation images. psnr: {psnr.item()}')
+
+
         global_step += 1
 
 
@@ -299,8 +293,9 @@ def create_nerf(args):
     skips = [4]
 
     # first coarse MLP with stratified sampling only
-    model = NeRF(D=args.netdepth, W=args.netwidth, input_ch=input_ch, output_ch=output_ch, skips=skips, 
-                 input_ch_views=input_ch_views,use_viewdirs=args.use_viewdirs).to(device)
+    model = NeRF(D=args.netdepth, W=args.netwidth,
+                 input_ch=input_ch, output_ch=output_ch, skips=skips,
+                 input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(utils.device)
     grad_vars = list(model.parameters())
 
     # second fine MLP combined with importance sampling
@@ -308,7 +303,7 @@ def create_nerf(args):
     if args.N_importance > 0:
         model_fine = NeRF(D=args.netdepth_fine, W=args.netwidth_fine,
                           input_ch=input_ch, output_ch=output_ch, skips=skips,
-                          input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(device)
+                          input_ch_views=input_ch_views, use_viewdirs=args.use_viewdirs).to(utils.device)
         grad_vars += list(model_fine.parameters())
 
     def network_query_fn(inputs, viewdirs, network_fn): return run_network(
@@ -336,10 +331,10 @@ def create_nerf(args):
             if "tar" in f
         ]
 
-    print("Found ckpts", ckpts)
+    logger.info('Found ckpts {}'.format(ckpts))
     if len(ckpts) > 0 and not args.no_reload:
         ckpt_path = ckpts[-1]
-        print("Reloading from", ckpt_path)
+        logger.info('Reloading from {}'.format(ckpt_path))
         ckpt = torch.load(ckpt_path)
 
         start = ckpt["global_step"]
@@ -367,10 +362,10 @@ def create_nerf(args):
     }
 
     # NDC only good for LLFF-style forward facing data
-    if args.dataset_type != "llff" or args.no_ndc:
-        print("Not ndc!")
-        render_kwargs_train["ndc"] = False
-        render_kwargs_train["lindisp"] = args.lindisp
+    if args.dataset_type != 'llff' or args.no_ndc:
+        logger.info('Not ndc!')
+        render_kwargs_train['ndc'] = False
+        render_kwargs_train['lindisp'] = args.lindisp
 
     render_kwargs_test = {k: render_kwargs_train[k] for k in render_kwargs_train}
     render_kwargs_test["perturb"] = False
@@ -431,6 +426,5 @@ if __name__ == "__main__":
     # set up logger
     os.makedirs(os.path.join(args.basedir, args.expname), exist_ok=True)
     f = os.path.join(args.basedir, args.expname, "audit.log")
-    logger = utils.setup_logger(f)
-
-    train(args, logger)
+    utils.setup_logger(f)
+    train(args)

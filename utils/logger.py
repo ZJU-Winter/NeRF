@@ -1,10 +1,11 @@
 import logging
 
+logger = logging.getLogger(__package__)
+logger.setLevel(logging.INFO)
+
 def setup_logger(path: str = ""):
     # create logger
-    logger = logging.getLogger(__package__)
     # logger.setLevel(logging.DEBUG)
-    logger.setLevel(logging.INFO)
 
     # log to file
     if path != "":
