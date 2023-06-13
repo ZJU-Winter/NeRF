@@ -341,18 +341,34 @@ def load_llff_data(
     max_d = poses[:, :3, 3].max(axis=0)
     print(f"min: {min_d} max: {max_d}")
 
-    vis = visualizer.CameraPoseVisualizer([min_d[0] * 10., max_d[0] * 10.], [min_d[1] * 10., max_d[1] * 10.], [min_d[2] * 10., max_d[2] * 10.])
+    vis = visualizer.CameraPoseVisualizer([min_d[0] * 2., max_d[0] * 2.], [min_d[1] * 2., max_d[1] * 2.], [min_d[2] * 2., max_d[2] * 2.])
     plist = [poses, render_poses]
-    clist = ['c', 'k']
+    # plist = [render_poses]
+    # plist = [poses]
+
+    clist = ['k', 'c']
+    c2w_44 = np.concatenate([c2w[:, :-1], np.array([[0, 0, 0, 1]])], 0)
     for l, c in zip(plist, clist):
         plen = l.shape[0]
-        for idx, p in enumerate(l[::5]):
+        print(plen)
+        hwf = l[0,:3,-1]
+        for idx, p in enumerate(l[::2]):
             #print("p shape", p[:,:-1].shape)
             # print("prepare p ", p.shape)
-            p = np.concatenate([p[0:1, :-1], p[1:2, :-1],-p[2:3, :-1], np.array([[0, 0, 0, 1]])], 0)
-            # print(p.shape)
-            vis.extrinsic2pyramid(p, c, 5)
+            right = p[:, 0]
+            up = p[:, 1]
+            eye = - p[:, 2]
+            pos = p[:, 3]
+            c2w = np.stack([right, up, eye, pos], 1)
+            # print(c2w)
+            p = np.concatenate([c2w, np.array([[0, 0, 0, 1]])], 0)
+            # print(p)
+            # print(hwf)
+            # vis.extrinsic2pyramid(p, plt.cm.rainbow(idx % plen), 0.1, aspect_ratio=hwf[0]/hwf[1])
+            vis.extrinsic2pyramid(p, c, 0.1, aspect_ratio=hwf[0]/hwf[1])
+
     os.makedirs(visdir, exist_ok=True)
     path = os.path.join(visdir, "camera_pose.jpg")
+    vis.show()
     vis.save(path)
     return images, poses, bds, render_poses, i_test

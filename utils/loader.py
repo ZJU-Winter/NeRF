@@ -18,7 +18,7 @@ def load_data(args):
     """
     logger = utils.logger
     if args.dataset_type == 'llff':
-        visdir = os.path.join(args.sbasedir, args.expname, "visualize")
+        visdir = os.path.join(args.basedir, args.expname, "visualize")
         images, poses, bds, render_poses, i_test = loader.load_llff_data(args.datadir, visdir, args.factor,
                                                                   recenter=True, bd_factor=.75,
                                                                   spherify=args.spherify)

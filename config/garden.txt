@@ -1,6 +1,7 @@
 expname = garden
 basedir = ./logs
-datadir = ../nerf-pytorch/data/garden
+#datadir = ../nerf-pytorch/data/garden
+datadir = ./data/360_v2/garden
 dataset_type = llff
 
 factor = 8
