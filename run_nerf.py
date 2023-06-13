@@ -243,6 +243,8 @@ def train(args):
 
         if i % args.i_print == 0:
             tqdm.write(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
+            logger.info(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
+
             
             if i % args.i_img == 0 and i > 0:
                 # log a validation view
