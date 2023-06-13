@@ -1,6 +1,6 @@
 import numpy as np
 import os, imageio
-
+import visualizer
 
 def _minify(basedir, factors=[], resolutions=[]):
     needtoload = False
@@ -273,6 +273,9 @@ def load_llff_data(
     bds = np.moveaxis(bds, -1, 0).astype(np.float32)
 
     # Rescale if bd_factor is provided
+    print("bds min",bds.min())
+    print("bds max",bds.max())
+
     sc = 1.0 if bd_factor is None else 1.0 / (bds.min() * bd_factor)
     poses[:, :3, 3] *= sc
     bds *= sc
@@ -331,4 +334,14 @@ def load_llff_data(
     images = images.astype(np.float32)
     poses = poses.astype(np.float32)
 
+    ### visualize camera pose
+    min_d = poses[:, :3, 3].min(axis=1)
+    max_d = poses[:, :3, 3].max(axis=1)
+    #([-50, 50], [-50, 50], [0, 100])
+    vis = visualizer.camera_pose_visualizer([min_d[0] * 10., max_d[0] * 10.], [min_d[1] * 10., max_d[1] * 10.], [min_d[2] * 10., max_d[2] * 10.])
+    for p in poses:
+        visualizer.extrinsic2pyramid(p[:3, 3], 'c', 10)
+    vissavedir = os.path.join(basedir, "visualize")
+    os.makedirs(vissavedir, exist_ok=True)
+    visualizer.save("camera_pose.jpg")
     return images, poses, bds, render_poses, i_test
