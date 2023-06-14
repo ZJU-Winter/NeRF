@@ -219,6 +219,8 @@ def spherify_poses(poses, bds):
     c2w = np.stack([vec1, vec2, vec0, pos], 1)
 
     poses_reset = np.linalg.inv(p34_to_44(c2w[None])) @ p34_to_44(poses[:, :3, :4])
+    # poses_reset = p34_to_44(poses[:, :3, :4])
+
 
     rad = np.sqrt(np.mean(np.sum(np.square(poses_reset[:, :3, 3]), -1)))
 
@@ -241,6 +243,7 @@ def spherify_poses(poses, bds):
         vec1 = normalize(np.cross(vec2, vec0))
         pos = camorigin
         p = np.stack([vec0, vec1, vec2, pos], 1)
+        
 
         new_poses.append(p)
 
