@@ -5,7 +5,7 @@ datadir: ./data/fox
 dataset_type: blender
 expname: fox
 
-no_batching: True
+# no_batching: True
 
 use_viewdirs: True
 white_bkgd: True
@@ -18,5 +18,5 @@ N_rand: 1024
 precrop_iters: 500
 precrop_frac: 0.5
 
-spherify: true
+# spherify: true
 half_res: True

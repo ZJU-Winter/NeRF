@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import cv2
 import visualizer
 import math
+import matplotlib.pyplot as plt
 
 # translation matrix (translate along z-axis)
 trans_t = lambda t: torch.tensor(
@@ -95,6 +96,7 @@ def load_blender_data(basedir, half_res=False, testskip=1, visdir=None):
         meta = json.load(fp)
     imgs = []
     poses = []
+    
     for frame in meta["frames"]:
         fname = os.path.join(basedir, frame["file_path"])
         try:
@@ -103,7 +105,12 @@ def load_blender_data(basedir, half_res=False, testskip=1, visdir=None):
                 poses.append(np.array(frame["transform_matrix"]))
         except FileNotFoundError:
             print(f"file {fname} not found")
-    imgs = (np.array(imgs) / 255.0).astype(np.float32)  # keep all 4 channels (RGBA)
+    imgs = (np.array(imgs) / 255.0).astype(np.float32)  
+    alpha = np.ones((imgs.shape[0], imgs.shape[1], imgs.shape[2], 1))
+    imgs = np.concatenate((imgs, alpha), axis=3)# keep all 4 channels (RGBA)
+    print("imges shape", imgs.shape)
+    print("alpha shape", alpha.shape)
+
     poses = np.array(poses).astype(np.float32)
     # counts.append(counts[-1] + imgs.shape[0])
     all_imgs.append(imgs)
@@ -140,10 +147,11 @@ def load_blender_data(basedir, half_res=False, testskip=1, visdir=None):
         H = H // 2
         W = W // 2
         focal = focal / 2.0
-        imgs_half_res = np.zeros((imgs.shape[0], H, W, 3))
+        imgs_half_res = np.zeros((imgs.shape[0], H, W, imgs.shape[-1]))
         for i, img in enumerate(imgs):
             imgs_half_res[i] = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
         imgs = imgs_half_res
+        plt.imshow(imgs[4])
         # imgs = torch.tensor(imgs)
         # imgs = (
         #     F.interpolate(imgs.permute(0, 3, 1, 2), size=[H, W], mode="area")
