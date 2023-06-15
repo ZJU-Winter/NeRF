@@ -49,7 +49,8 @@ def load_data(args):
         logger.info('NEAR FAR %s %s', near, far)
 
     elif args.dataset_type == 'blender':
-        images, poses, render_poses, hwf, i_split = loader.load_blender_data(args.datadir, args.half_res, args.testskip)
+        visdir = os.path.join(args.basedir, args.expname, "visualize")
+        images, poses, render_poses, hwf, i_split = loader.load_blender_data(args.datadir, args.half_res, args.testskip, visdir)
         logger.info('Loaded blender %s %s %s %s', images.shape, render_poses.shape, hwf, args.datadir)
         # i_train, i_val, i_test = i_split
         

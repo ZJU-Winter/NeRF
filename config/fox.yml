@@ -1,9 +1,9 @@
 ### INPUT
 # datadir: ../nerf-pytorch/data/nerf_synthetic/lego
-datadir: ./data/nerf_synthetic/lego
+datadir: ./data/fox
 
 dataset_type: blender
-expname: lego
+expname: fox
 
 no_batching: True
 
