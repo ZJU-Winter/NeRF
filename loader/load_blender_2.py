@@ -60,34 +60,6 @@ def pose_spherical(theta, phi, radius):
 
 
 def load_blender_data_2(basedir, half_res=False, testskip=1, visdir=None):
-    # splits = ["train", "val", "test"]
-    # metas = {}
-    # for s in splits:
-    #     with open(os.path.join(basedir, "transforms_{}.json".format(s)), "r") as fp:
-    #         metas[s] = json.load(fp)
-
-    
-    # all_poses = []
-    # counts = [0]
-    # for s in splits:
-    #     meta = metas[s]
-    #     imgs = []
-    #     poses = []
-    #     if s == "train" or testskip == 0:
-    #         skip = 1
-    #     else:
-    #         skip = testskip
-
-    #     for frame in meta["frames"][::skip]:
-    #         fname = os.path.join(basedir, frame["file_path"] + ".png")
-    #         imgs.append(imageio.imread(fname))
-    #         poses.append(np.array(frame["transform_matrix"]))
-    #     imgs = (np.array(imgs) / 255.0).astype(np.float32)  # keep all 4 channels (RGBA)
-    #     poses = np.array(poses).astype(np.float32)
-    #     counts.append(counts[-1] + imgs.shape[0])
-    #     all_imgs.append(imgs)
-    #     all_poses.append(poses)
-
     all_imgs = []
     all_poses = []
     meta = []
@@ -166,46 +138,41 @@ def load_blender_data_2(basedir, half_res=False, testskip=1, visdir=None):
             imgs_half_res[i] = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
         imgs = imgs_half_res
         plt.imshow(imgs[4])
-        # imgs = torch.tensor(imgs)
-        # imgs = (
-        #     F.interpolate(imgs.permute(0, 3, 1, 2), size=[H, W], mode="area")
-        #     .permute(0, 2, 3, 1)
-        #     .numpy()
-        # )
 
-    min_d = poses[:, :3, 3].min(axis=0)
-    max_d = poses[:, :3, 3].max(axis=0)
-    print(f"min: {min_d} max: {max_d}")
+    # visualize
+    # min_d = poses[:, :3, 3].min(axis=0)
+    # max_d = poses[:, :3, 3].max(axis=0)
+    # print(f"min: {min_d} max: {max_d}")
 
-    vis = visualizer.CameraPoseVisualizer([min_d[0] * 2., max_d[0] * 2.], [min_d[1] * 2., max_d[1] * 2.], [min_d[2] * 2., max_d[2] * 2.])
-    plist = [poses, render_poses]
-    # plist = [render_poses]
-    # plist = [poses]
+    # vis = visualizer.CameraPoseVisualizer([min_d[0] * 2., max_d[0] * 2.], [min_d[1] * 2., max_d[1] * 2.], [min_d[2] * 2., max_d[2] * 2.])
+    # plist = [poses, render_poses]
+    # # plist = [render_poses]
+    # # plist = [poses]
 
-    clist = ['k', 'c']
-    # c2w_44 = np.concatenate([c2w[:, :-1], np.array([[0, 0, 0, 1]])], 0)
-    for l, c in zip(plist, clist):
-        plen = l.shape[0]
-        print(plen)
-        hwf = l[0,:3,-1]
-        for idx, p in enumerate(l[::2]):
-            #print("p shape", p[:,:-1].shape)
-            # print("prepare p ", p.shape)
-            right = p[:, 0]
-            up = p[:, 1]
-            eye = - p[:, 2]
-            pos = p[:, 3]
-            c2w = np.stack([right, up, eye, pos], 1)
-            # print(c2w)
-            # p = np.concatenate([c2w, np.array([[0, 0, 0, 1]])], 0)
-            # print(p)
-            # print(hwf)
-            # vis.extrinsic2pyramid(p, plt.cm.rainbow(idx % plen), 0.1, aspect_ratio=hwf[0]/hwf[1])
-            vis.extrinsic2pyramid(c2w, c, 1, aspect_ratio=0.75)
+    # clist = ['k', 'c']
+    # # c2w_44 = np.concatenate([c2w[:, :-1], np.array([[0, 0, 0, 1]])], 0)
+    # for l, c in zip(plist, clist):
+    #     plen = l.shape[0]
+    #     print(plen)
+    #     hwf = l[0,:3,-1]
+    #     for idx, p in enumerate(l[::2]):
+    #         #print("p shape", p[:,:-1].shape)
+    #         # print("prepare p ", p.shape)
+    #         right = p[:, 0]
+    #         up = p[:, 1]
+    #         eye = - p[:, 2]
+    #         pos = p[:, 3]
+    #         c2w = np.stack([right, up, eye, pos], 1)
+    #         # print(c2w)
+    #         # p = np.concatenate([c2w, np.array([[0, 0, 0, 1]])], 0)
+    #         # print(p)
+    #         # print(hwf)
+    #         # vis.extrinsic2pyramid(p, plt.cm.rainbow(idx % plen), 0.1, aspect_ratio=hwf[0]/hwf[1])
+    #         vis.extrinsic2pyramid(c2w, c, 1, aspect_ratio=0.75)
 
-    os.makedirs(visdir, exist_ok=True)
-    path = os.path.join(visdir, "camera_pose.jpg")
-    vis.show()
-    vis.save(path)
-    print("i_split", i_split)
+    # os.makedirs(visdir, exist_ok=True)
+    # path = os.path.join(visdir, "camera_pose.jpg")
+    # vis.show()
+    # vis.save(path)
+    # print("i_split", i_split)
     return imgs, poses, render_poses, [H, W, focal], i_split
