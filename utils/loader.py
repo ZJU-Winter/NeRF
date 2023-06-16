@@ -50,7 +50,12 @@ def load_data(args):
 
     elif args.dataset_type == 'blender':
         visdir = os.path.join(args.basedir, args.expname, "visualize")
-        images, poses, render_poses, hwf, i_split = loader.load_blender_data(args.datadir, args.half_res, args.testskip, visdir)
+
+        if args.combine_dataset == True:
+            logger.info("use load_blender_data_2")
+            images, poses, render_poses, hwf, i_split = loader.load_blender_data_2(args.datadir, args.half_res, args.testskip, visdir)
+        else:
+            images, poses, render_poses, hwf, i_split = loader.load_blender_data(args.datadir, args.half_res, args.testskip)
         logger.info('Loaded blender %s %s %s %s', images.shape, render_poses.shape, hwf, args.datadir)
         # i_train, i_val, i_test = i_split
         

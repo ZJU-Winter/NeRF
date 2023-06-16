@@ -20,3 +20,4 @@ precrop_frac: 0.5
 
 # spherify: true
 half_res: True
+combine_data: True

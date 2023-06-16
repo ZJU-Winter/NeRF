@@ -85,6 +85,8 @@ def config_parser() -> configargparse.ArgumentParser :
                         help='set to render synthetic data on a white bkgd (always use for dvoxels)')
     parser.add_argument("--half_res", action='store_true', 
                         help='load blender synthetic data at 400x400 instead of 800x800')
+    parser.add_argument("--combine_dataset", action='store_true', 
+                        help='load blender synthetic data with single transform.json')
 
     ## llff flags
     parser.add_argument("--factor", type=int, default=8, 
